@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import math
 from Graph import Graph
+from utils import names_to_list
 
 class EdgeColoring:
     def __init__(self,names: list,graph:Graph):
@@ -11,7 +12,7 @@ class EdgeColoring:
         self.graph = graph #Graph(self.names,self.coloring)
         
     def get_EC_for_complete_graph(names):
-        names = str.split(names,sep=',')
+        names = names_to_list(names)
         ec = EdgeColoring(names,Graph.create_complete_Graph(names))
         return ec
     
@@ -25,7 +26,7 @@ class EdgeColoring:
             e = uncolored_Edges.pop(0)
             u,v = self.graph.get_vertices(e)
             free_color = self.graph.check_vertices_compatible(u,v)
-            if not free_color is None:
+            if not free_color is None and free_color!=self.graph.max_color: #try to avoid last color
                 self.graph.set_color(e,free_color)
             else:
                 self.set_a_maximal_fan(u,v)
@@ -146,3 +147,13 @@ class EdgeColoring:
                 name_list["Person A"].append(name_1)
                 name_list["Person B"].append(name_2)
             self.table[round] = pd.DataFrame.from_dict(name_list)
+
+def print_round(ec,i):
+    for e in ec.pairing[i]:
+        print(ec.graph.get_names_from_edge(e))
+
+def print_plan(ec: EdgeColoring):
+    ec.set_table()
+    for i in range(ec.graph.max_color):
+        print("############## Round {} ##############".format(i+1))
+        print(ec.table[i])
