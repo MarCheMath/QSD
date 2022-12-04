@@ -8,78 +8,102 @@ import math
 import numpy as np
 
 
-class graph:       
-    def __init__(self,namelist,colorlist):
-        self.colorlist = np.asarray(colorlist)
-        self.vertexlist = list()
-        for v_n in namelist:
-            v = graph.vertex(v_n)
-            self.init_vertex(v)
-            self.vertexlist.append(v)    
-        self.edgelist = list()
-        self.init_edges()
+class Graph:       
+#    def __init__(self,namelist,colorlist):
+#        self.colorlist = np.asarray(colorlist)
+#        self.vertexlist = list()
+#        for v_n in namelist:
+#            v = Graph.Vertex(v_n)
+#            self.init_vertex(v)
+#            self.vertexlist.append(v)    
+#        self.edgelist = list()
+#        self.init_Edges()
+    
+    def __init__(self,vertexlist,edgelist):
+        self.colorlist = np.array(range(len(vertexlist)+1))
+        self.vertexlist = vertexlist
+        self.edgelist = edgelist
         
-    class vertex:
-        def __init__(self,name):
+    def create_complete_Graph(namelist):      
+        colornum = len(namelist)
+        vertexlist = list()
+        for v_n in namelist:
+            v = Graph.Vertex(v_n,colornum)
+            vertexlist.append(v)  
+        for v in vertexlist:
+            v.set_adjacent_vertices(vertexlist)
+        
+        edgelist = list()
+        for u in vertexlist:
+            for v in vertexlist:
+                if not u is v:
+                    edgelist.append(Graph.Edge(u,v))
+        for edge in edgelist:
+            edge.u.edgelist.append(edge)
+            edge.v.edgelist.append(edge)
+        graph = Graph(vertexlist,edgelist)
+        return graph
+        
+    class Vertex:
+        """
+        Fields:
+            name
+            adjacentvertices
+            edgelist
+            free
+        """
+        def __init__(self,name,colornum):
             self.name=name
             self.adjacentvertices = list()
             self.edgelist=list()
+            self.free = np.array([True]*colornum)
             
         def checkfree(self,color):
             return self.free[color]
         
-        def getedge(self,z):
+        def getEdge(self,z):
             for e in self.edgelist:
                 if e.u == z or e.v == z:
-                    return e
-    class edge:
+                    return e            
+        
+        def set_adjacent_vertices(self,adjacentvertices):
+            self.adjacentvertices = adjacentvertices
+            
+    class Edge:
         def __init__(self,u,v):
             self.u = u
             self.u.adjacentvertices.append(v)
             self.v = v
             self.v.adjacentvertices.append(u)
             self.color = None
-        
-    def init_vertex(self,v):
-        v.free = [None]*len(self.colorlist)
-        for color in self.colorlist:
-            v.free[color] = True
-        #v.edgelist = [x for x in self.vertexlist if x!=v]
-        
-    def init_edges(self):
-        for i_u in range(len(self.vertexlist)):
-            u = self.vertexlist[i_u]
-            for i_v in range(i_u,len(self.vertexlist)):
-                v= self.vertexlist[i_v]
-                v.edgelist.append(graph.edge(u,v))
-                
+                       
     def get_edges_by_color(self):
         pairing = dict()
         for color in self.colorlist:
             pairing[color] = list()
         
         for edge in self.edgelist:
-            pairing[color].append(edge)
+            pairing[edge.color].append(edge)
         return pairing
     
     
 
-class edgeColoring:
-    def __init__(self,names):
-        self.names = str.split(names,sep=',')
+class EdgeColoring:
+    def __init__(self,names,graph):
+        self.names = names 
         self.coloring = range(len(self.names))
         self.tables = range(math.ceil(len(self.names)/2))
-        self.graph = graph(self.names,self.coloring)
+        self.graph = graph #Graph(self.names,self.coloring)
         
-    def construct_graph(self):    
-        self.graph = dict()
-        for name in self.names:
-           self.graph[name]=graph.vertex()
+    def get_EC_for_complete_graph(names):
+        names = str.split(names,sep=',')
+        ec = EdgeColoring(names,Graph.create_complete_Graph(names))
+        return ec
     
     def do_coloring(self):
-        uncolored_edges = self.graph.edgelist.copy()
-        while uncolored_edges:
-            e = uncolored_edges.pop(0)
+        uncolored_Edges = self.graph.edgelist.copy()
+        while uncolored_Edges:
+            e = uncolored_Edges.pop(0)
             self.set_a_maximal_fan(e.u,e.v)
             c,d = self.get_free_colors(e)           
             w = self.invert_path(e.u,c,d)
@@ -107,21 +131,31 @@ class edgeColoring:
                     return vertex_list.pop(i_x)
         
     def get_free_colors(self, e):
-        i_c = np.where(e.u.free)
-        i_d = np.where((self.fan)[-1].free) 
-        c = self.graph.colorlist[i_c]        
-        d = self.graph.colorlist[i_d] 
+        c = None
+        for i_c, c_v in self.graph.colorlist:
+            if e.u.free[i_c]:
+                c=c_v #less pythonic, but clearer
+                break
+        d = None
+        for i_c, c_v in self.graph.colorlist:
+            if (self.fan)[-1].free[i_c]:
+                d=c_v #less pythonic, but clearer
+                break
+#        i_c = np.where(e.u.free)
+#        i_d = np.where((self.fan)[-1].free) 
+#        c = self.graph.colorlist[i_c]        
+#        d = self.graph.colorlist[i_d] 
         return(c,d)
         
     def invert_path(self,u,c,d):    
         edgelist_path = list()
         vertexfan = self.fan[-1]
-        current_color = d
+        seeked_color = d
         current_node = u
         pathnotend = True
         
         while pathnotend:
-            current_node, current_color,e = edgeColoring.find_next_color(current_color,c,d, current_node)
+            current_node, seeked_color,e = EdgeColoring.find_next_color(seeked_color,c,d, current_node)
             if e:
                 edgelist_path.append(e)
                 if current_node in self.fan:
@@ -145,12 +179,12 @@ class edgeColoring:
                     break
         self.fan = trimed_fan
     
-    def find_next_color(current_color,c,d, current_node):
+    def find_next_color(seeked_color,c,d, current_node):
         for e in current_node.edgelist:
-            if e.color == current_color:
-                next_v = e[0] if e[0]!=current_node else e[1]
-                current_color = c if current_color == d else d
-                return (next_v,current_color,e)
+            if e.color == seeked_color:
+                next_v = e.u if e.u!=current_node else e.v
+                seeked_color = c if seeked_color == d else d
+                return (next_v,seeked_color,e)
         return (None,None,False)
         
         
@@ -158,9 +192,8 @@ class edgeColoring:
         for i_vertex in range(len(self.fan)-1):
             vertex = self.fan[i_vertex]
             vertex_plusone = self.fan[i_vertex+1]
-            u.getedge(vertex).color = u.getedge(vertex_plusone).color
-            
-        self.fan[-1].getedge(u).color = d
+            u.getEdge(vertex).color = u.getEdge(vertex_plusone).color
+        self.fan[-1].getEdge(u).color = d
         
     def process_output(self):
         self.pairing = self.graph.get_edges_by_color()
@@ -170,7 +203,7 @@ class edgeColoring:
             print(e.u.name,e.v.name)
             
 names = "Mark, Robert, Tom, Johannes, Birk, Stefan"
-ec = edgeColoring(names)
+ec = EdgeColoring.get_EC_for_complete_graph(names)
 ec.do_coloring()
 i=0
 ec.print_round(i)
